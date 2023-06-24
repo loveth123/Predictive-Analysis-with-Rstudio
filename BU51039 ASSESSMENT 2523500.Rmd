@@ -1,0 +1,165 @@
+---
+title: "INDIVIDUAL ASSESSMENT"
+author: "LOVETH NWAKAMMA"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+---
+# load Train and Test Data 
+
+```{r}
+train <- read.csv("C:/Users/lnwak/OneDrive/Desktop/PGD B.A & BD CLASSES/SEM2/PD&PRC/assessment 2/train.csv")
+
+test <- read.csv("C:/Users/lnwak/OneDrive/Desktop/PGD B.A & BD CLASSES/SEM2/PD&PRC/assessment 2/test.csv")
+```
+
+# logistics regression on train data with selected variables
+```{r}
+logistic_model <- glm(y ~ job + education + age + default + balance + loan + contact + campaign + duration + poutcome, data =train, family = 'binomial')
+summary(logistic_model)
+```
+# Display column names
+```{r}
+names(train)
+```
+
+# summary of no of subscribers and non-subscribers from past campaign in train data
+```{r}
+table(train$y)
+```
+
+# en-coding variables from train Data
+```{r}
+train$y = as.factor(train$y)
+train$marital=as.factor(train$marital)
+train$job=as.factor(train$job)
+train$education= as.factor(train$education)
+train$poutcome =as.factor(train$poutcome)
+train$default= as.factor(train$default)
+train$loan =as.factor(train$loan)
+train$contact = as.factor(train$contact)
+train$month =as.factor(train$month)
+train$day =as.factor(train$day)
+```
+
+# en-coding variables from test Data
+```{r}
+test$y = as.factor(test$y)
+test$marital=as.factor(test$marital)
+test$job=as.factor(test$job)
+test$education= as.factor(test$education)
+test$poutcome =as.factor(test$poutcome)
+test$default= as.factor(test$default)
+test$loan =as.factor(test$loan)
+test$contact = as.factor(test$contact)
+test$month =as.factor(test$month)
+test$day =as.factor(test$day)
+```
+
+loading Caret
+```{r}
+library(caret)
+```
+
+
+# predicting Logistics regression on Test Data
+```{r}
+predict_model1 <- predict(logistic_model, test, type = "response")
+```
+
+```{r}
+predict_model1_class <- ifelse(predict_model1 >0.25, 1, 0)
+test$predict_model1_class = predict_model1_class
+confusionMatrix(as.factor(test$predict_model1_class), as.factor(test$y))
+```
+
+
+#2. Decision Tree Model
+
+#loading library rpart
+
+```{r}
+library(rpart)
+```
+
+```{r}
+library(rpart.plot)
+```
+
+#Decision tree with train data
+```{r}
+tree <- rpart(formula = y ~ job + education + age + default + balance + housing + loan + contact + campaign + duration + poutcome,data = train, minsplit =5, minbucket = 10, control = list(minbucket =10, maxdepth =4), method = 'class', cp = 0.004) 
+rpart.plot(tree)
+```
+
+# decision tree for test data  
+
+```{r}
+tree2 <- rpart(formula = y ~ job + education + age + default + balance + housing + loan + contact + campaign + duration + poutcome,data = test, minsplit =5, minbucket = 10, control = list(minbucket =10, maxdepth =4), method = 'class', cp = 0.004) 
+rpart.plot(tree)
+```
+#predict with test Data
+```{r}
+predictCART_test = predict(tree2,data=test, type= "class")
+test$predictCART_test = predictCART_test
+confusionMatrix(test$predictCART_test,as.factor(test$y))
+```
+#install and load randomforest package
+```{r}
+library(randomForest)
+```
+
+# run random forest on train data
+```{r}
+random_forest_class = randomForest(y ~ job + education + age + default + balance + housing + loan + contact + campaign + duration + poutcome, data = train,importance = T)
+```
+
+# predict random forest on train data
+```{r}
+P1 <- predict(random_forest_class, train)
+confusionMatrix(P1, train$y)
+```
+
+#predict with test data
+
+```{r}
+random_forest_class2 = randomForest(y ~ job + education + age + default + balance + housing + loan + contact + campaign + duration + poutcome, data = test,importance = T)
+
+P2 <- predict(random_forest_class2, test)
+confusionMatrix(P2, test$y)
+```
+#plot random forest
+```{r}
+plot(random_forest_class2)
+```
+# sort out the most important variables towards predicting the bank data outcome
+```{r}
+varImpPlot(random_forest_class2)
+```
+# load pRoc
+```{r}
+library(pROC)
+```
+
+#run Roc on each predicted test data for LR,DT, and RF 
+```{r}
+roc1 <- roc(as.numeric(test$y),as.numeric(predict_model1_class))
+```
+
+```{r}
+roc2 <- roc(as.numeric(test$y),as.numeric(predictCART_test))
+```
+
+```{r}
+roc3 <- roc(as.numeric(test$y),as.numeric(P2))
+```
+
+#plot ROC to justify choosen model
+```{r}
+plot(roc1, col="blue", legacy.axes=TRUE, main="ROC Curve Comparison", xlab="False Positive Rate", ylab="True Positive Rate")
+plot(roc2, col="red", add = TRUE )
+plot(roc3, col="green", add = TRUE)
+legend("bottomright", c("Logistics Regression", "Decision Tree", "Random Forest"), col = c("blue", "red", "green"), lty = 1)
+```
+
